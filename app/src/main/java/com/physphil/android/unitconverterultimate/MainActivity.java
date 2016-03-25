@@ -23,14 +23,24 @@ import android.preference.PreferenceManager;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
+import com.facebook.stetho.common.LogUtil;
+import com.physphil.android.unitconverterultimate.api.FixerService;
+import com.physphil.android.unitconverterultimate.api.models.Latest;
 import com.physphil.android.unitconverterultimate.fragments.ConversionFragment;
 import com.physphil.android.unitconverterultimate.fragments.HelpDialogFragment;
 import com.physphil.android.unitconverterultimate.models.Conversion;
 import com.physphil.android.unitconverterultimate.util.Conversions;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Main activity
@@ -38,6 +48,7 @@ import com.physphil.android.unitconverterultimate.util.Conversions;
  */
 public class MainActivity extends BaseActivity implements SharedPreferences.OnSharedPreferenceChangeListener
 {
+    private static final String TAG = "PS";
     private DrawerLayout mDrawerLayout;
     private Conversions mConversions;
 
@@ -60,7 +71,7 @@ public class MainActivity extends BaseActivity implements SharedPreferences.OnSh
         mDrawerLayout.setDrawerListener(new DrawerLayout.DrawerListener()
         {
             @Override
-            public void onDrawerSlide(View drawerView, float slideOffset){}
+            public void onDrawerSlide(View drawerView, float slideOffset) {}
 
             @Override
             public void onDrawerOpened(View drawerView)
@@ -69,10 +80,10 @@ public class MainActivity extends BaseActivity implements SharedPreferences.OnSh
             }
 
             @Override
-            public void onDrawerClosed(View drawerView){}
+            public void onDrawerClosed(View drawerView) {}
 
             @Override
-            public void onDrawerStateChanged(int newState){}
+            public void onDrawerStateChanged(int newState) {}
         });
         setupDrawer(conversion);
 
@@ -82,6 +93,35 @@ public class MainActivity extends BaseActivity implements SharedPreferences.OnSh
                     .replace(R.id.fragment_container, ConversionFragment.newInstance(conversion))
                     .commit();
         }
+
+        // FIXME: 16-03-25 Testing retrofit2 api calls
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("http://api.fixer.io/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        FixerService service = retrofit.create(FixerService.class);
+        Log.d(TAG, "onCreate: Enqueueing Retrofit call");
+        service.getLatest().enqueue(new Callback<Latest>()
+        {
+            @Override
+            public void onResponse(Call<Latest> call, Response<Latest> response)
+            {
+                Log.d(TAG, "onResponse: Retrofit success!");
+                Log.d(TAG, "onResponse: base = " + response.body().getBase());
+                Log.d(TAG, "onResponse: date = " + response.body().getDate());
+                Log.d(TAG, "onResponse: aud = " + response.body().getRates().getAud());
+                Log.d(TAG, "onResponse: bgn = " + response.body().getRates().getBgn());
+                Log.d(TAG, "onResponse: brl = " + response.body().getRates().getBrl());
+                Log.d(TAG, "onResponse: cad = " + response.body().getRates().getCad());
+            }
+
+            @Override
+            public void onFailure(Call<Latest> call, Throwable t)
+            {
+                Log.d(TAG, "onFailure: Retrofit failure");
+            }
+        });
     }
 
     @Override
